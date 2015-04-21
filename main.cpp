@@ -6,9 +6,17 @@ struct Backbuffer {
   int height;
 } backbuffer;
 
-void render(void *backbuffer)
+void render()
 {
 
+  Uint32 *pixel = (Uint32*) backbuffer.memory;
+  for (int h = 0; h < backbuffer.height; ++h)
+  {
+    for (int w = 0; w < backbuffer.width; ++w)
+    {
+      *pixel++ = 0x912CEE;
+    }
+  } 
 }
 
 
@@ -44,6 +52,13 @@ int main(int argc, char *argv[])
 
   while (game_running)
   {
+    render();
+    SDL_UpdateTexture(texture, NULL, backbuffer.memory, 1280 * sizeof(Uint32));
+
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
+
     while (SDL_PollEvent(&event))
     {
       switch(event.type)

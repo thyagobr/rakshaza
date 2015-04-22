@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     return(100);
   }
 
-  SDL_CreateWindowAndRenderer(backbuffer.width, backbuffer.height, SDL_WINDOW_RESIZABLE, &window, &renderer);
+  SDL_CreateWindowAndRenderer(backbuffer.width, backbuffer.height, SDL_WINDOW_FULLSCREEN_DESKTOP, &window, &renderer);
   if ((!window) || (!renderer))
   {
     printf("rakshaza: window creation failed.\n %s\n", SDL_GetError());
@@ -91,7 +91,9 @@ int main(int argc, char *argv[])
       }
     }
     end_counter = SDL_GetPerformanceCounter();
-    printf("ms per frame: %f\n", (((float) (end_counter - last_counter) * 1000.0f) / (float) performance_frequency));
+    int counters_per_frame = end_counter - last_counter;
+    float counters_per_second = (((float) counters_per_frame * 1000.0f) / (float) performance_frequency);
+    printf("ms per frame: %f\n", counters_per_second);
     last_counter = end_counter;
   }
 

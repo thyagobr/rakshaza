@@ -6,6 +6,7 @@ typedef short int16;
 Uint64 performance_frequency;
 Uint64 last_counter;
 Uint64 end_counter;
+bool has_resized;
 
 #define PI 3.14159265358979f
 
@@ -14,6 +15,19 @@ struct Backbuffer {
   int width;
   int height;
 } backbuffer;
+
+struct Soundbuffer {
+  void* memory;
+  // 32 bits for stereo sample: 16 for left, 16 for right
+  // we need this out every second
+  int sampling_rate;
+  int16 tone_volume;
+  int tone_frequency_hz;
+  int number_of_periods;
+  int wave_period;
+  int bytes_per_sample;
+  int max_bytes_to_write;
+} sound_buffer;
 
 void audio_init(Uint32 samples_per_second, Uint32 buffer_size)
 {
@@ -33,13 +47,31 @@ void audio_init(Uint32 samples_per_second, Uint32 buffer_size)
   }
 }
 
-void render()
+void output_audio(Soundbuffer *sound_buffer, int bytes_to_write)
 {
-
-  Uint32 *pixel = (Uint32*) backbuffer.memory;
-  for (int h = 0; h < backbuffer.height; ++h)
+  int16* sound_buffer_pointer = (int16*) sound_buffer->memory;
+  int samples_per_frame = (bytes_to_write / sound_buffer->bytes_per_sample);
+  for (int i = 0; i < samples_per_frame; ++i)
   {
-    for (int w = 0; w < backbuffer.width; ++w)
+    // int16 output_sound = ((number_of_periods % wave_period) > (wave_period / 2) ? -3000 : 3000);
+    float t = 2.0f * PI * sound_buffer->number_of_periods / (float) sound_buffer->wave_period;
+    int16 output_sound = (int16) (sinf(t) * sound_buffer->tone_volume);
+    *sound_buffer_pointer++ = output_sound;
+    *sound_buffer_pointer++ = output_sound;
+    sound_buffer->number_of_periods++;
+  }
+}
+
+void render(Backbuffer *backbuffer)
+{
+  int pitch = backbuffer->width * 4;
+  int max_width = backbuffer->width;
+  int max_height = backbuffer->height;
+  Uint8 *row = (Uint8*) backbuffer->memory;
+  for (int h = 0; h < max_height; ++h)
+  {
+    Uint32* pixel = (Uint32*) (row + h * pitch);
+    for (int w = 0; w < max_width; ++w)
     {
       *pixel++ = 0x912CEE;
       // *pixel++ = rand() % 4294967296;
@@ -56,6 +88,7 @@ int main(int argc, char *argv[])
   SDL_Renderer *renderer;
   SDL_Texture *texture;
   bool game_running = true;
+  has_resized = false;
   backbuffer.width = 1280;
   backbuffer.height = 720;
   backbuffer.memory = malloc(backbuffer.width * backbuffer.height * 4);
@@ -79,39 +112,28 @@ int main(int argc, char *argv[])
       SDL_TEXTUREACCESS_STREAMING,
       backbuffer.width, backbuffer.height);
 
-  // 32 bits for stereo sample: 16 for left, 16 for right
-  // we need this out every second
-  int sampling_rate = 48000;
-  int tone_frequency_hz = 256;
-  int number_of_periods = 0;
-  int wave_period = sampling_rate / tone_frequency_hz;
-  int bytes_per_sample = sizeof(short) * 2;
-  int max_bytes_to_write = 48000 * bytes_per_sample;
-  void* sound_buffer;
-  bool sound_playing = false;
-  audio_init(sampling_rate, (sampling_rate * bytes_per_sample) / 60);
+  sound_buffer.sampling_rate = 48000;
+  sound_buffer.tone_volume = 3000;
+  sound_buffer.tone_frequency_hz = 256;
+  sound_buffer.number_of_periods = 0;
+  sound_buffer.wave_period = sound_buffer.sampling_rate / sound_buffer.tone_frequency_hz;
+  sound_buffer.bytes_per_sample = sizeof(short) * 2;
+  sound_buffer.max_bytes_to_write = 48000 * sound_buffer.bytes_per_sample;
 
+  audio_init(sound_buffer.sampling_rate, (sound_buffer.sampling_rate * sound_buffer.bytes_per_sample) / 30);
+  bool sound_playing = false;
 
   while (game_running)
   {
     last_counter = SDL_GetPerformanceCounter();
 
-    int bytes_to_write = max_bytes_to_write - SDL_GetQueuedAudioSize(1);
+    int bytes_to_write = sound_buffer.max_bytes_to_write - SDL_GetQueuedAudioSize(1);
     if (bytes_to_write)
     {
-      sound_buffer = malloc(bytes_to_write);
-      int16* sound_buffer_pointer = (int16*) sound_buffer;
-      for (int i = 0; i < (bytes_to_write / bytes_per_sample); ++i)
-      {
-        // int16 output_sound = ((number_of_periods % wave_period) > (wave_period / 2) ? -3000 : 3000);
-        float t = 2.0f * PI * number_of_periods / (float) wave_period;
-        int16 output_sound = (int16) (sinf(t) * 3000);
-        *sound_buffer_pointer++ = output_sound;
-        *sound_buffer_pointer++ = output_sound;
-        number_of_periods++;
-      }
-      SDL_QueueAudio(1, sound_buffer, bytes_to_write);
-      free(sound_buffer);
+      sound_buffer.memory = malloc(bytes_to_write);
+      output_audio(&sound_buffer, bytes_to_write);
+      SDL_QueueAudio(1, sound_buffer.memory, bytes_to_write);
+      free(sound_buffer.memory);
     }
 
     if (!sound_playing)
@@ -120,8 +142,18 @@ int main(int argc, char *argv[])
       sound_playing = true;
     }
 
-    render();
-    SDL_UpdateTexture(texture, NULL, backbuffer.memory, backbuffer.width * sizeof(Uint32));
+    if (has_resized)
+    {
+     free(backbuffer.memory);
+     backbuffer.memory = malloc(backbuffer.width * backbuffer.height * 4); 
+     texture = SDL_CreateTexture(renderer,
+         SDL_PIXELFORMAT_ARGB8888,
+         SDL_TEXTUREACCESS_STREAMING,
+         backbuffer.width, backbuffer.height);
+     has_resized = false;
+    }
+    render(&backbuffer);
+    SDL_UpdateTexture(texture, NULL, backbuffer.memory, backbuffer.width * 4);
 
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, texture, NULL, NULL);
@@ -139,12 +171,11 @@ int main(int argc, char *argv[])
           {
             switch(event.window.event)
             {
-              case SDL_WINDOWEVENT_RESIZED:
+              case SDL_WINDOWEVENT_SIZE_CHANGED:
                 {
                   backbuffer.width = event.window.data1;
                   backbuffer.height = event.window.data2;
-                  free(backbuffer.memory);
-                  backbuffer.memory = malloc(backbuffer.width * backbuffer.height * 4);
+                  has_resized = true;
                 } break;
             }
           } break;
@@ -153,7 +184,7 @@ int main(int argc, char *argv[])
     end_counter = SDL_GetPerformanceCounter();
     int counters_per_frame = end_counter - last_counter;
     float counters_per_second = (((float) counters_per_frame * 1000.0f) / (float) performance_frequency);
-    // printf("ms per frame: %f\n", counters_per_second);
+     printf("ms per frame: %f\n", counters_per_second);
     last_counter = end_counter;
   }
 

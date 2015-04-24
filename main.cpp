@@ -8,6 +8,7 @@ Uint64 last_counter;
 Uint64 end_counter;
 bool has_resized;
 int colour_offset = 0;
+SDL_Joystick *joystick;
 
 #define PI 3.14159265358979f
 
@@ -128,18 +129,13 @@ int main(int argc, char *argv[])
   // joystick
   if (SDL_NumJoysticks() > 0)
   {
-    printf("Joysticks found.\n");
-    if (SDL_IsGameController(0))
+    joystick = SDL_JoystickOpen(0);
+    if (!joystick)
     {
-      printf("And ready to roll!\n");
+      printf("This joystick is not suppoerted. Sorry.\n");
     }
   }
 
-  SDL_Joystick *c = SDL_JoystickOpen(0);
-  if (!c)
-  {
-    printf("Null. Sorry.\n");
-  }
 
   while (game_running)
   {
@@ -178,14 +174,19 @@ int main(int argc, char *argv[])
     SDL_RenderCopy(renderer, texture, NULL, NULL);
     SDL_RenderPresent(renderer);
 
+    // Joystick detection
+    if (joystick) {
+      Sint16 x_move = SDL_JoystickGetAxis(joystick, 0);
+      if (x_move)
+      {
+        colour_offset += x_move % 10;
+      }
+    }
+
     while (SDL_PollEvent(&event))
     {
       switch(event.type)
       {
-        case SDL_JOYAXISMOTION:
-          {
-            printf("Axis: %d\n", event.jaxis.value);
-          }  break;
         case SDL_QUIT:
           {
             printf("Quitting.\n");
@@ -213,8 +214,8 @@ int main(int argc, char *argv[])
   }
 
   free(backbuffer.memory);
-  if (c) {
-    SDL_JoystickClose(c);
+  if (joystick) {
+    SDL_JoystickClose(joystick);
   }
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);

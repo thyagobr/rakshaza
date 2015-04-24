@@ -7,6 +7,7 @@ Uint64 performance_frequency;
 Uint64 last_counter;
 Uint64 end_counter;
 bool has_resized;
+int colour_offset = 0;
 
 #define PI 3.14159265358979f
 
@@ -73,7 +74,8 @@ void render(Backbuffer *backbuffer)
     Uint32* pixel = (Uint32*) (row + h * pitch);
     for (int w = 0; w < max_width; ++w)
     {
-      *pixel++ = 0x912CEE;
+      *pixel++ = (0xFF000000|(colour_offset + w)<<16|h<<8);
+      // *pixel++ = 0xFF912CEE + colour_offset;
       // *pixel++ = rand() % 4294967296;
     }
   } 
@@ -123,8 +125,25 @@ int main(int argc, char *argv[])
   audio_init(sound_buffer.sampling_rate, (sound_buffer.sampling_rate * sound_buffer.bytes_per_sample) / 30);
   bool sound_playing = false;
 
+  // joystick
+  if (SDL_NumJoysticks() > 0)
+  {
+    printf("Joysticks found.\n");
+    if (SDL_IsGameController(0))
+    {
+      printf("And ready to roll!\n");
+    }
+  }
+
+  SDL_Joystick *c = SDL_JoystickOpen(0);
+  if (!c)
+  {
+    printf("Null. Sorry.\n");
+  }
+
   while (game_running)
   {
+    colour_offset++;
     last_counter = SDL_GetPerformanceCounter();
 
     int bytes_to_write = sound_buffer.max_bytes_to_write - SDL_GetQueuedAudioSize(1);
@@ -144,13 +163,13 @@ int main(int argc, char *argv[])
 
     if (has_resized)
     {
-     free(backbuffer.memory);
-     backbuffer.memory = malloc(backbuffer.width * backbuffer.height * 4); 
-     texture = SDL_CreateTexture(renderer,
-         SDL_PIXELFORMAT_ARGB8888,
-         SDL_TEXTUREACCESS_STREAMING,
-         backbuffer.width, backbuffer.height);
-     has_resized = false;
+      free(backbuffer.memory);
+      backbuffer.memory = malloc(backbuffer.width * backbuffer.height * 4); 
+      texture = SDL_CreateTexture(renderer,
+          SDL_PIXELFORMAT_ARGB8888,
+          SDL_TEXTUREACCESS_STREAMING,
+          backbuffer.width, backbuffer.height);
+      has_resized = false;
     }
     render(&backbuffer);
     SDL_UpdateTexture(texture, NULL, backbuffer.memory, backbuffer.width * 4);
@@ -163,10 +182,15 @@ int main(int argc, char *argv[])
     {
       switch(event.type)
       {
+        case SDL_JOYAXISMOTION:
+          {
+            printf("Axis: %d\n", event.jaxis.value);
+          }  break;
         case SDL_QUIT:
-          printf("Quitting.\n");
-          game_running = false;
-          break;
+          {
+            printf("Quitting.\n");
+            game_running = false;
+          } break;
         case SDL_WINDOWEVENT:
           {
             switch(event.window.event)
@@ -189,6 +213,9 @@ int main(int argc, char *argv[])
   }
 
   free(backbuffer.memory);
+  if (c) {
+    SDL_JoystickClose(c);
+  }
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
 }

@@ -1,8 +1,6 @@
 #include <SDL.h>
 #include <time.h>
 
-typedef short int16;
-
 Uint64 performance_frequency;
 Uint64 last_counter;
 Uint64 end_counter;
@@ -23,7 +21,7 @@ struct Soundbuffer {
   // 32 bits for stereo sample: 16 for left, 16 for right
   // we need this out every second
   int sampling_rate;
-  int16 tone_volume;
+  Sint16 tone_volume;
   int tone_frequency_hz;
   int number_of_periods;
   int wave_period;
@@ -51,13 +49,13 @@ void audio_init(Uint32 samples_per_second, Uint32 buffer_size)
 
 void output_audio(Soundbuffer *sound_buffer, int bytes_to_write)
 {
-  int16* sound_buffer_pointer = (int16*) sound_buffer->memory;
+  Sint16* sound_buffer_pointer = (Sint16*) sound_buffer->memory;
   int samples_per_frame = (bytes_to_write / sound_buffer->bytes_per_sample);
   for (int i = 0; i < samples_per_frame; ++i)
   {
-    // int16 output_sound = ((number_of_periods % wave_period) > (wave_period / 2) ? -3000 : 3000);
+    // Sint16 output_sound = ((number_of_periods % wave_period) > (wave_period / 2) ? -3000 : 3000);
     float t = 2.0f * PI * sound_buffer->number_of_periods / (float) sound_buffer->wave_period;
-    int16 output_sound = (int16) (sinf(t) * sound_buffer->tone_volume);
+    Sint16 output_sound = (Sint16) (sinf(t) * sound_buffer->tone_volume);
     *sound_buffer_pointer++ = output_sound;
     *sound_buffer_pointer++ = output_sound;
     sound_buffer->number_of_periods++;

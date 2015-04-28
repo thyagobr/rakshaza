@@ -2,6 +2,11 @@
 #include <time.h>
 #include <sys/mman.h>
 
+/*
+ * RAKSHAZA_SLOW: 0 (not slow) 1 (slow performance check)
+ * RAKSHAZA_INTERNAL: 0 (public release) 1 (developer debug)
+ */
+
 Uint64 performance_frequency;
 Uint64 last_counter;
 Uint64 end_counter;
@@ -105,17 +110,22 @@ int main(int argc, char *argv[])
   backbuffer.height = 720;
   backbuffer.memory = malloc(backbuffer.width * backbuffer.height * 4);
 
+#if RASKSHAZA_INTERNAL
+void* base_address = (void*) Terabytes(2);
+#else
+void* base_address = (void*) 0;
+#endif
+
   GameMemory game_memory = {};
   game_memory.persistent_storage_size = Megabytes(64);
   game_memory.transient_storage_size = Gigabytes(4);
-  game_memory.persistent_storage = mmap(0, game_memory.persistent_storage_size,
+  Uint64 total_size = game_memory.persistent_storage_size + game_memory.transient_storage_size;
+  game_memory.persistent_storage = mmap(base_address, total_size,
                                        PROT_READ | PROT_WRITE,
                                        MAP_ANON | MAP_PRIVATE,
                                        -1, 0); 
-  game_memory.transient_storage = mmap(0, game_memory.transient_storage_size,
-                                       PROT_READ | PROT_WRITE,
-                                       MAP_ANON | MAP_PRIVATE,
-                                       -1, 0); 
+  game_memory.transient_storage = (Uint8*) (game_memory.persistent_storage) + game_memory.persistent_storage_size;
+                                  
 
   if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
   {

@@ -140,15 +140,6 @@ int main(int argc, char *argv[])
     colour_offset++;
     last_counter = SDL_GetPerformanceCounter();
 
-    int bytes_to_write = sound_buffer.max_bytes_to_write - SDL_GetQueuedAudioSize(1);
-    if (bytes_to_write)
-    {
-      sound_buffer.memory = malloc(bytes_to_write);
-      output_audio(&sound_buffer, bytes_to_write);
-      SDL_QueueAudio(1, sound_buffer.memory, bytes_to_write);
-      free(sound_buffer.memory);
-    }
-
     if (!sound_playing)
     {
       SDL_PauseAudio(0);
@@ -178,8 +169,20 @@ int main(int argc, char *argv[])
       if (x_move)
       {
         colour_offset += x_move % 10;
+        last_counter = SDL_GetPerformanceCounter();
       }
     }
+
+    int bytes_to_write = sound_buffer.max_bytes_to_write - SDL_GetQueuedAudioSize(1);
+    if (bytes_to_write)
+    {
+      sound_buffer.memory = malloc(bytes_to_write);
+      output_audio(&sound_buffer, bytes_to_write);
+      SDL_QueueAudio(1, sound_buffer.memory, bytes_to_write);
+      end_counter = SDL_GetPerformanceCounter();
+      free(sound_buffer.memory);
+    }
+
 
     while (SDL_PollEvent(&event))
     {
@@ -204,10 +207,11 @@ int main(int argc, char *argv[])
           } break;
       }
     }
-    end_counter = SDL_GetPerformanceCounter();
     int counters_per_frame = end_counter - last_counter;
     float counters_per_second = (((float) counters_per_frame * 1000.0f) / (float) performance_frequency);
-    //  printf("ms per frame: %f\n", counters_per_second);
+    if (counters_per_second > 0) {
+      printf("ms per frame: %f\n", counters_per_second);
+    }
     last_counter = end_counter;
   }
 

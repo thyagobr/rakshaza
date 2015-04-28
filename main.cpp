@@ -1,5 +1,6 @@
 #include <SDL.h>
 #include <time.h>
+#include <sys/mman.h>
 
 Uint64 performance_frequency;
 Uint64 last_counter;
@@ -9,6 +10,9 @@ int colour_offset = 0;
 SDL_Joystick *joystick;
 
 #define PI 3.14159265358979f
+#define Kilobytes(Value) ((Value)*1024LL)
+#define Megabytes(Value) (Kilobytes(Value)*1024LL)
+#define Gigabytes(Value) (Megabytes(Value)*1024LL)
 
 struct Backbuffer {
   void *memory;
@@ -28,6 +32,13 @@ struct Soundbuffer {
   int bytes_per_sample;
   int max_bytes_to_write;
 } sound_buffer;
+
+struct GameMemory {
+  Uint64 persistent_storage_size;
+  void* persistent_storage;
+  Uint64 transient_storage_size;
+  void* transient_storage;
+};
 
 void audio_init(Uint32 samples_per_second, Uint32 buffer_size)
 {
@@ -94,6 +105,17 @@ int main(int argc, char *argv[])
   backbuffer.height = 720;
   backbuffer.memory = malloc(backbuffer.width * backbuffer.height * 4);
 
+  GameMemory game_memory = {};
+  game_memory.persistent_storage_size = Megabytes(64);
+  game_memory.transient_storage_size = Gigabytes(4);
+  game_memory.persistent_storage = mmap(0, game_memory.persistent_storage_size,
+                                       PROT_READ | PROT_WRITE,
+                                       MAP_ANON | MAP_PRIVATE,
+                                       -1, 0); 
+  game_memory.transient_storage = mmap(0, game_memory.transient_storage_size,
+                                       PROT_READ | PROT_WRITE,
+                                       MAP_ANON | MAP_PRIVATE,
+                                       -1, 0); 
 
   if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
   {

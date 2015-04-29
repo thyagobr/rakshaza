@@ -3,7 +3,7 @@
 #include <sys/mman.h>
 
 /*
- * RAKSHAZA_SLOW: 0 (not slow) 1 (slow performance check)
+ * RAKSHAZA_DEBUG: 0 (not slow) 1 (slow performance check)
  * RAKSHAZA_INTERNAL: 0 (public release) 1 (developer debug)
  */
 
@@ -18,6 +18,13 @@ SDL_Joystick *joystick;
 #define Kilobytes(Value) ((Value)*1024LL)
 #define Megabytes(Value) (Kilobytes(Value)*1024LL)
 #define Gigabytes(Value) (Megabytes(Value)*1024LL)
+
+// On Debug mode, Assert will break the code if failed
+#if RAKSHAZA_DEBUG
+#define Assert(expression) if (!(expression)) { *(int*) 0 = 0; }
+#else
+#define Assert(expression)
+#endif
 
 struct Backbuffer {
   void *memory;
@@ -125,7 +132,6 @@ void* base_address = (void*) 0;
                                        MAP_ANON | MAP_PRIVATE,
                                        -1, 0); 
   game_memory.transient_storage = (Uint8*) (game_memory.persistent_storage) + game_memory.persistent_storage_size;
-                                  
 
   if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
   {

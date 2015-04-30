@@ -1,3 +1,5 @@
+#include "main.h"
+#include <fcntl.h>
 #include <SDL.h>
 #include <time.h>
 #include <sys/mman.h>
@@ -103,6 +105,30 @@ void render(Backbuffer *backbuffer)
   } 
 }
 
+void* read_file(const char* file_name)
+{
+  int file_handle = open(file_name, O_RDONLY);
+  if (file_handle == -1)
+  {
+    
+  }
+}
+
+void* free_file(void* bitmap_memory)
+{
+
+}
+
+void update()
+{
+  const char* file_name = "test.bmp";
+  void* bitmap_memory = read_file(file_name);
+  if (bitmap_memory)
+  {
+    free_file(bitmap_memory);
+  }
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -183,6 +209,8 @@ void* base_address = (void*) 0;
       SDL_PauseAudio(0);
       sound_playing = true;
     }
+
+    update();
 
     if (has_resized)
     {

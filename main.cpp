@@ -190,7 +190,7 @@ void* base_address = (void*) 0;
   game_memory.transient_storage = (Uint8*) (game_memory.persistent_storage) + game_memory.persistent_storage_size;
 
   // Loading assets file
-  const char* file_name = "/home/archon/code/projects/aetheris/main_window.rb";
+  const char* file_name = "main.cpp";
   //Uint64 file_size = get_file_size(file_name);
   //void *bitmap_memory = reserve_storage_memory(game_memory, file_size);
   void* bitmap_memory = read_file(file_name);

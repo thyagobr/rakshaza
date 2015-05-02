@@ -154,10 +154,38 @@ void* read_file(const char *file_name)
   }
   else
   {
-    printf("Something went wrong with read()! %s\n", strerror(errno));
+    printf("Something went wrong with open()! %s\n", strerror(errno));
   }
   close(file_handle);
   return result;
+}
+
+bool write_file(const char *file_name, Uint32 memory_size, void* memory)
+{
+  int file_handle = open(file_name, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+  if (file_handle != -1)
+  {
+    Uint32 bytes_to_write = memory_size;
+    Uint8* next_byte = (Uint8*) memory;
+    while(bytes_to_write)
+    {
+      Uint32 bytes_written = write(file_handle, next_byte, bytes_to_write);
+      if (bytes_written == -1)
+      {
+        close(file_handle);
+        printf("Writing failed!");
+        return false;
+      }
+      bytes_to_write -= bytes_written;
+      next_byte += bytes_written;
+    }
+  }
+  else
+  {
+    printf("Something went wrong with open()! %s\n", strerror(errno));
+  }
+  close(file_handle);
+  return true;
 }
 
 int main(int argc, char *argv[])

@@ -60,6 +60,11 @@ struct GameMemory {
   void* transient_storage;
 };
 
+struct FileRead {
+  Uint32 file_content_size;
+  void *file_content;
+};
+
 void audio_init(Uint32 samples_per_second, Uint32 buffer_size)
 {
   SDL_AudioSpec audio_settings = {0};
@@ -127,9 +132,10 @@ void* free_file_memory(void* file_memory)
   }
 }
 
-void* read_file(const char *file_name)
+FileRead read_file(const char *file_name)
 {
-  void* result = 0;
+  FileRead file_read_info = {};
+
   int file_handle = open(file_name, O_RDONLY);
   if (file_handle != -1)
   {
@@ -137,17 +143,24 @@ void* read_file(const char *file_name)
     if (fstat(file_handle, &file_status) != -1)
     {
       Uint32 file_size = uint64_to_uint32(file_status.st_size);
-      result = malloc(file_size);
-      if (result)
+      file_read_info.file_content = malloc(file_size);
+      if (file_read_info.file_content)
       {
-        if (Uint32 bytes_read = read(file_handle, (Uint8*) result, file_size))
+        Uint32 bytes_to_read = file_size;
+        Uint8* next_byte = (Uint8*) file_read_info.file_content;
+        while (bytes_to_read)
         {
-          printf("Successful! File size: %d\n", file_size);
-        }
-        else
-        {
-          free_file_memory(result);
-          result = 0;
+          Uint32 bytes_read = read(file_handle, next_byte, bytes_to_read);
+          if (bytes_read == -1)
+          {
+            free_file_memory(file_read_info.file_content);
+            file_read_info.file_content_size = 0;
+            file_read_info.file_content = 0;
+            close(file_handle);
+            return file_read_info;
+          }
+          bytes_to_read -= bytes_read;
+          next_byte += bytes_read;
         }
       }
     }
@@ -157,7 +170,7 @@ void* read_file(const char *file_name)
     printf("Something went wrong with open()! %s\n", strerror(errno));
   }
   close(file_handle);
-  return result;
+  return file_read_info;
 }
 
 bool write_file(const char *file_name, Uint32 memory_size, void* memory)
@@ -222,10 +235,11 @@ void* base_address = (void*) 0;
   const char* file_name = "main.cpp";
   //Uint64 file_size = get_file_size(file_name);
   //void *bitmap_memory = reserve_storage_memory(game_memory, file_size);
-  void* bitmap_memory = read_file(file_name);
-  if (bitmap_memory)
+  FileRead file = read_file(file_name);
+  if (file.file_content)
   {
-    free_file_memory(bitmap_memory);
+    write_file("/home/archon/code/projects/rakshaza/new_file.cpp", file.file_content_size, file.file_content);
+    free_file_memory(file.file_content);
   }
 
   // SDL Setup

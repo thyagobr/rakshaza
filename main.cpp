@@ -143,6 +143,7 @@ FileRead read_file(const char *file_name)
     if (fstat(file_handle, &file_status) != -1)
     {
       Uint32 file_size = uint64_to_uint32(file_status.st_size);
+      file_read_info.file_content_size = file_size;
       file_read_info.file_content = malloc(file_size);
       if (file_read_info.file_content)
       {

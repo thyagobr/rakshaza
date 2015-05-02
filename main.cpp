@@ -239,7 +239,7 @@ void* base_address = (void*) 0;
   FileRead file = read_file(file_name);
   if (file.file_content)
   {
-    write_file("/home/archon/code/projects/rakshaza/new_file.cpp", file.file_content_size, file.file_content);
+    write_file("new_file.cpp", file.file_content_size, file.file_content);
     free_file_memory(file.file_content);
   }
 

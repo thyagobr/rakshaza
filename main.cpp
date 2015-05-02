@@ -142,7 +142,7 @@ void* read_file(const char *file_name)
       {
         if (Uint32 bytes_read = read(file_handle, (Uint8*) result, file_size))
         {
-          // success
+          printf("Successful! File size: %d\n", file_size);
         }
         else
         {
@@ -154,9 +154,10 @@ void* read_file(const char *file_name)
   }
   else
   {
-    printf("Oh dear, something went wrong with read()! %s\n", strerror(errno));
+    printf("Something went wrong with read()! %s\n", strerror(errno));
   }
   close(file_handle);
+  return result;
 }
 
 int main(int argc, char *argv[])

@@ -2,6 +2,12 @@
 #include <SDL.h>
 #include <time.h>
 #include <sys/mman.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <string.h>
 #include "main.h"
 
 /*
@@ -105,6 +111,54 @@ void render(Backbuffer *backbuffer)
   } 
 }
 
+// truncate 64-bits ints to 32-bits, or 4GB+ file-loading would
+// break on 32-bits systems (0xFFFFFFFF is maximum 32int value)
+Uint32 uint64_to_uint32(Uint64 value)
+{
+  Assert(value <= 0xFFFFFFFF);
+  return (Uint32) value;
+}
+
+void* free_file_memory(void* file_memory)
+{
+  if (file_memory)
+  {
+    free(file_memory); 
+  }
+}
+
+void* read_file(const char *file_name)
+{
+  void* result = 0;
+  int file_handle = open(file_name, O_RDONLY);
+  if (file_handle != -1)
+  {
+    struct stat file_status;
+    if (fstat(file_handle, &file_status) != -1)
+    {
+      Uint32 file_size = uint64_to_uint32(file_status.st_size);
+      result = malloc(file_size);
+      if (result)
+      {
+        if (Uint32 bytes_read = read(file_handle, (Uint8*) result, file_size))
+        {
+          // success
+        }
+        else
+        {
+          free_file_memory(result);
+          result = 0;
+        }
+      }
+    }
+  }
+  else
+  {
+    printf("Oh dear, something went wrong with read()! %s\n", strerror(errno));
+  }
+  close(file_handle);
+}
+
 int main(int argc, char *argv[])
 {
   performance_frequency = SDL_GetPerformanceFrequency();
@@ -124,6 +178,7 @@ void* base_address = (void*) Terabytes(2);
 void* base_address = (void*) 0;
 #endif
 
+  // Initializing memory
   GameMemory game_memory = {};
   game_memory.persistent_storage_size = Megabytes(64);
   game_memory.transient_storage_size = Gigabytes(4);
@@ -134,6 +189,17 @@ void* base_address = (void*) 0;
                                        -1, 0); 
   game_memory.transient_storage = (Uint8*) (game_memory.persistent_storage) + game_memory.persistent_storage_size;
 
+  // Loading assets file
+  const char* file_name = "/home/archon/code/projects/aetheris/main_window.rb";
+  //Uint64 file_size = get_file_size(file_name);
+  //void *bitmap_memory = reserve_storage_memory(game_memory, file_size);
+  void* bitmap_memory = read_file(file_name);
+  if (bitmap_memory)
+  {
+    free_file_memory(bitmap_memory);
+  }
+
+  // SDL Setup
   if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
   {
     printf("SDL couldn't be initialized\n %s\n", SDL_GetError());

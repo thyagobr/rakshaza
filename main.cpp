@@ -130,6 +130,7 @@ void* free_file_memory(void* file_memory)
   {
     free(file_memory); 
   }
+  return 0;
 }
 
 FileRead read_file(const char *file_name)
@@ -151,7 +152,7 @@ FileRead read_file(const char *file_name)
         Uint8* next_byte = (Uint8*) file_read_info.file_content;
         while (bytes_to_read)
         {
-          Uint32 bytes_read = read(file_handle, next_byte, bytes_to_read);
+          ssize_t bytes_read = read(file_handle, next_byte, bytes_to_read);
           if (bytes_read == -1)
           {
             free_file_memory(file_read_info.file_content);
@@ -183,7 +184,7 @@ bool write_file(const char *file_name, Uint32 memory_size, void* memory)
     Uint8* next_byte = (Uint8*) memory;
     while(bytes_to_write)
     {
-      Uint32 bytes_written = write(file_handle, next_byte, bytes_to_write);
+      ssize_t bytes_written = write(file_handle, next_byte, bytes_to_write);
       if (bytes_written == -1)
       {
         close(file_handle);
